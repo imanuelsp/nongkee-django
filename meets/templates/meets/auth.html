@@ -1,0 +1,23 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if signup %}Create account{% else %}Sign in{% endif %} · nongkee</title>
+  <link rel="stylesheet" href="{% static 'meets/nongkee.css' %}">
+</head>
+<body class="auth-page">
+  <main class="auth-card">
+    <a class="auth-brand" href="{% url 'meets:home' %}">nongkee</a>
+    <h1>{% if signup %}Create account{% else %}Sign in{% endif %}</h1>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <button class="launch-btn" type="submit">{% if signup %}Create account{% else %}Sign in{% endif %}</button>
+    </form>
+    {% if signup %}<a href="{% url 'meets:login' %}{% if next %}?next={{ next|urlencode:'' }}{% endif %}">Already have an account?</a>{% else %}<a href="{% url 'meets:signup' %}{% if next %}?next={{ next|urlencode:'' }}{% endif %}">Create an account</a>{% endif %}
+  </main>
+</body>
+</html>

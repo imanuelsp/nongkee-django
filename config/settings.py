@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'meets',
 ]
 
 MIDDLEWARE = [
@@ -76,6 +77,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {'transaction_mode': 'IMMEDIATE'},
     }
 }
 
@@ -104,11 +106,15 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Jakarta'
 
 USE_I18N = True
 
 USE_TZ = True
+
+LOGIN_URL = 'meets:login'
+LOGIN_REDIRECT_URL = 'meets:home'
+LOGOUT_REDIRECT_URL = 'meets:home'
 
 
 # Static files (CSS, JavaScript, Images)

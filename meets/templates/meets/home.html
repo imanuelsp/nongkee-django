@@ -1,0 +1,133 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page == 'mine' %}My Meets{% elif page == 'rooms_page' %}Kelas Kosong{% else %}Open Meets{% endif %} · nongkee</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'meets/nongkee.css' %}">
+  <script src="{% static 'meets/nongkee.js' %}" defer></script>
+</head>
+<body>
+<div id="stage" class="stage{% if page == 'rooms_page' %} show-rooms{% endif %}{% if detail %} open-detail{% endif %}" data-room-options="{% url 'meets:room_options' %}" data-page="{{ page }}">
+  <header>
+    <a href="{% url 'meets:home' %}" aria-label="nongkee home">
+      <svg class="logo" width="98" height="72" viewBox="0 0 98 72" fill="none" stroke="#2ccf72" stroke-width="3.5" stroke-linecap="round" aria-hidden="true">
+        <circle cx="49" cy="37" r="30"/><circle cx="19" cy="37" r="7"/><circle cx="79" cy="37" r="7"/>
+        <ellipse cx="49" cy="40" rx="20" ry="17"/><circle cx="41" cy="36" r="5" fill="#2ccf72"/><circle cx="57" cy="36" r="5" fill="#2ccf72"/>
+        <path d="M43 48q6 5 12 0"/><path d="M36 9q13-9 26 0"/>
+      </svg>
+      <div class="word">nongkee</div>
+    </a>
+    <div class="who">
+      {% if user.is_authenticated %}
+        <b>{{ user.get_username }}</b>
+        <form method="post" action="{% url 'meets:logout' %}">{% csrf_token %}<button type="submit" class="text-button">Sign out</button></form>
+      {% else %}
+        <a href="{% url 'meets:login' %}?next={{ request.path|urlencode }}">Sign in</a>
+      {% endif %}
+    </div>
+    <div class="av me-av" aria-hidden="true">{% if user.is_authenticated %}{{ user.get_username|first|upper }}{% endif %}</div>
+  </header>
+
+  <div class="frame" id="fl"></div><div class="frame" id="fm"></div><div class="frame" id="fr"></div>
+  <nav aria-label="Main navigation">
+    <a class="nav-item{% if page == 'rooms_page' %} on{% endif %}" href="{% url 'meets:rooms_page' %}" aria-label="Kelas Kosong"{% if page == 'rooms_page' %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      <span class="tooltip">Kelas Kosong</span>
+    </a>
+    <a class="nav-item{% if page == 'home' %} on{% endif %}" href="{% url 'meets:home' %}" aria-label="Open Meets"{% if page == 'home' %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"/><path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"/><path d="M5 18v2M19 18v2"/></svg>
+      <span class="tooltip">Open Meets</span>
+    </a>
+    <a class="nav-item{% if page == 'mine' %} on{% endif %}" href="{% url 'meets:mine' %}" aria-label="My Meets"{% if page == 'mine' %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="tooltip">My Meets</span>
+    </a>
+  </nav>
+
+  {% if page == 'rooms_page' %}
+    <main id="roomsView">
+      <h1 class="view-title">Katalog Kelas Kosong</h1>
+      <div class="room-view-controls" id="directoryFilters">{% include 'meets/room_filters.html' %}</div>
+      <div id="roomsGrid" aria-live="polite"></div>
+    </main>
+  {% else %}
+    <main id="meetsView">
+      <h1 class="view-title">{% if page == 'mine' %}My Meets{% else %}Open Meets{% endif %}</h1>
+      <div id="grid">
+        {% if user.is_authenticated %}
+          <button type="button" class="card create" id="openCreateCard" aria-label="Start a Meet"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20"/><path d="M23 14v18M14 23h18"/></svg></button>
+        {% else %}
+          <a class="card create" href="{% url 'meets:login' %}?next={{ request.path|urlencode }}" aria-label="Sign in to start a meet"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20"/><path d="M23 14v18M14 23h18"/></svg></a>
+        {% endif %}
+        {% for item in meet_list %}
+          <a class="card{% if item.is_host or item.member.status == 'joined' %} mine{% endif %}" href="?meet={{ item.meet.pk }}" data-detail-url="{% url 'meets:detail' item.meet.pk %}">
+            <div class="avs" aria-hidden="true">
+              {% for attendee in item.avatars|slice:':3' %}<div class="av{% if forloop.first %} big{% endif %}{% if attendee == user %} me{% endif %}">{{ attendee.get_username|first|upper }}</div>{% endfor %}
+              {% if item.extra %}<span class="cnt">+{{ item.extra }}</span>{% endif %}
+            </div>
+            <div class="t">{{ item.meet.title }}</div>
+            <div class="o">opened by: {{ item.meet.host.get_username }}</div>
+            <div class="tags"><span class="tag">{{ item.meet.get_topic_display }}</span><span class="tag room-tag">📍 {{ item.meet.room }}</span></div>
+          </a>
+        {% empty %}
+          <p class="empty-meets">{% if page == 'home' %}No open meets yet.{% elif user.is_authenticated %}You haven’t hosted, joined, or requested a meet yet.{% else %}Sign in to see your meets.{% endif %}</p>
+        {% endfor %}
+      </div>
+    </main>
+  {% endif %}
+  <div id="fade"></div>
+
+  <div id="scrim"></div>
+  <section id="modal" role="dialog" aria-modal="true" aria-labelledby="mt" tabindex="-1"{% if not detail %} hidden{% endif %}>
+    <a href="{{ request.path }}" class="close-btn detail-close" id="closeDetail" aria-label="Close meet details">×</a>
+    <div id="detailContent">{% if detail %}{% include 'meets/detail.html' %}{% endif %}</div>
+  </section>
+
+  {% if user.is_authenticated %}
+    <form id="createModal" action="{% url 'meets:create' %}" method="post" role="dialog" aria-modal="true" aria-labelledby="createTitle" hidden>
+      {% csrf_token %}
+      <div class="modal-header">
+        <div><h2 id="createTitle">Start a Meet</h2><p>Choose an empty classroom or spot in Pacil to hang out or study</p></div>
+        <button type="button" class="close-btn" id="closeCreateBtn" aria-label="Close start a meet">×</button>
+      </div>
+      <div class="create-body">
+        <div class="left-pane">
+          <div class="field-group">
+            <label class="field-label" for="newTitle">Meet Title</label>
+            <input type="text" name="title" class="input-txt" id="newTitle" maxlength="100" required placeholder="e.g. Belajar DAA bareng, PBP Sprint...">
+          </div>
+          <fieldset class="field-group radio-group">
+            <legend class="field-label">Topic / Category</legend>
+            <div class="topic-pills">
+              {% for value, label in topics %}<label><input type="radio" name="topic" value="{{ value }}"{% if forloop.first %} checked{% endif %}><span class="topic-pill">{{ label }}</span></label>{% endfor %}
+            </div>
+          </fieldset>
+          <div class="field-group">
+            <label class="field-label" for="joinMode">Who can join?</label>
+            <select id="joinMode" name="join_mode" class="input-txt">{% for value, label in join_modes %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+          </div>
+          <div class="field-group">
+            <span class="field-label">Host</span>
+            <div class="host-preview"><div class="av" aria-hidden="true">{{ user.get_username|first|upper }}</div><strong>{{ user.get_username }}</strong></div>
+          </div>
+        </div>
+        <div class="right-pane">
+          <div class="field-label room-heading">Choose an Available Room <span id="availCount" aria-live="polite"></span></div>
+          <div class="filter-bar" id="createFilters">{% include 'meets/room_filters.html' with picker=True %}</div>
+          <input type="hidden" name="room" id="selectedRoom">
+          <div class="room-scroll-box" id="roomScrollBox"></div>
+        </div>
+      </div>
+      <p class="form-error" id="createError" role="alert" hidden></p>
+      <div class="create-bottom">
+        <div class="selected-summary"><span>Selected Room:</span><b id="summaryRoomName">Belum dipilih</b></div>
+        <button type="submit" class="launch-btn" id="launchMeetBtn" disabled>Start Meet <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      </div>
+    </form>
+  {% endif %}
+</div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<label class="visually-hidden" for="{% if picker %}create{% else %}view{% endif %}Date">Day</label>
+<select name="date" class="mini-pill" id="{% if picker %}create{% else %}view{% endif %}Date">
+  {% for day, label in day_options %}<option value="{{ day|date:'Y-m-d' }}"{% if day == date %} selected{% endif %}>{{ label }}, {{ day|date:'j M' }}</option>{% endfor %}
+</select>
+<div class="time-row radio-group" role="group" aria-label="Time in Jakarta">
+  {% for value, label in windows %}<label><input type="radio" name="window" value="{{ value }}"{% if value == window %} checked{% endif %}><span class="mini-pill">{{ label }}</span></label>{% endfor %}
+</div>
+<div class="time-row radio-group" role="group" aria-label="Area">
+  {% for value, label in buildings %}<label><input type="radio" name="building" value="{{ value }}"{% if forloop.first %} checked{% endif %}><span class="mini-pill">{{ label }}</span></label>{% endfor %}
+  {% if picker %}<label><input type="radio" name="building" value="casual"><span class="mini-pill">Spot Santai</span></label>{% endif %}
+</div>

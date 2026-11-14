@@ -1,0 +1,33 @@
+{% if picker %}
+  <template data-available="{{ available }}"></template>
+  {% if not can_start %}<p class="room-message">This time slot has already started.</p>{% endif %}
+  {% for room in rooms %}
+    <button type="button" class="room-item{% if room.busy %} occupied{% endif %}" data-room="{{ room.name }}" aria-pressed="false"{% if room.busy or not can_start %} disabled{% endif %}>
+      <span class="room-item-top"><span class="room-item-name">{{ room.name }}</span><span class="room-badge {% if room.busy %}busy{% else %}free{% endif %}">{% if room.busy %}Terpakai{% elif room.casual %}Spot Santai{% else %}Kosong{% endif %}</span></span>
+      <span class="room-item-sub">{% if room.class %}Kelas: {{ room.class.course_name }}{% elif room.meet %}Meet: {{ room.meet }}{% elif not room.casual %}Tersedia pada {{ window }}{% endif %}</span>
+    </button>
+  {% empty %}<p class="room-message">Tidak ada ruangan di area ini.</p>{% endfor %}
+{% else %}
+  {% for room in rooms %}
+    <article class="room-dir-card {% if room.busy %}busy{% else %}free{% endif %}">
+      <div>
+        <div class="dir-room-header"><h2 class="dir-room-title">{{ room.name }}</h2><span class="dir-badge {% if room.busy %}busy{% else %}free{% endif %}">{% if room.busy %}Terpakai{% else %}Kosong{% endif %}</span></div>
+        <div class="dir-body">
+          {% if room.class %}
+            <div class="dir-busy-course">{{ room.class.course_name }} ({{ room.class.class_name }})</div>
+            <div class="dir-busy-time">{{ room.class.start_time }}–{{ room.class.end_time }}</div>
+            <div class="dir-busy-lec">{{ room.class.lecturers|join:', ' }}</div>
+          {% elif room.meet %}
+            <div class="dir-busy-course">Meet: {{ room.meet }}</div>
+            <div class="dir-busy-time">{{ window }}</div>
+          {% else %}
+            <div class="dir-free-msg">Kosong menurut jadwal</div>
+          {% endif %}
+        </div>
+      </div>
+      {% if not room.busy and can_start %}
+        {% if request.user.is_authenticated %}<button type="button" class="quick-book-btn" data-room-book="{{ room.name }}">Start Meet Here</button>{% else %}<a class="quick-book-btn" href="{% url 'meets:login' %}?next={% url 'meets:rooms_page' %}">Sign in to start a meet</a>{% endif %}
+      {% endif %}
+    </article>
+  {% empty %}<p class="room-message">Tidak ada ruangan di area ini.</p>{% endfor %}
+{% endif %}
