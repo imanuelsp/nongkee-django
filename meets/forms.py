@@ -1,4 +1,6 @@
 from django import forms
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.models import User
 from django.utils import timezone
 
 from .models import Meet
@@ -40,3 +42,39 @@ class CreateMeetForm(SlotForm):
                 if any(key in occupied for key in room_keys(room)):
                     self.add_error('room', 'A class is scheduled in that room during this time.')
         return cleaned
+
+
+
+class EmailLoginForm(AuthenticationForm):
+    username = forms.EmailField(label="Email", max_length=254)
+
+    def clean_username(self):
+        email = self.cleaned_data["username"].lower()
+        matches = list(User.objects.filter(email__iexact=email).values_list("username", flat=True)[:2])
+        return matches[0] if len(matches) == 1 else ""
+
+
+class EmailSignupForm(UserCreationForm):
+    username = forms.EmailField(label="Email", max_length=150)
+    first_name = forms.CharField(label="Nama tampilan", max_length=150)
+
+    class Meta(UserCreationForm.Meta):
+        fields = ("username", "first_name")
+
+    def clean_username(self):
+        email = self.cleaned_data["username"].lower()
+        if User.objects.filter(email__iexact=email).exists() or User.objects.filter(username__iexact=email).exists():
+            raise forms.ValidationError("Email sudah digunakan.")
+        return email
+
+    def save(self, commit=True):
+        self.instance.email = self.cleaned_data["username"]
+        return super().save(commit)
+
+
+class ProfileForm(forms.ModelForm):
+    first_name = forms.CharField(label="Nama tampilan", max_length=150)
+
+    class Meta:
+        model = User
+        fields = ("first_name",)

@@ -22,12 +22,12 @@
       <p class="membership-status">This meet has ended.</p>
     {% endif %}
   </div>
-  <div id="host"><div class="av" aria-hidden="true">{{ detail.meet.host.get_username|first|upper }}</div><p>Host · {{ detail.meet.host.get_username }}</p></div>
+  <div id="host"><div class="av" aria-hidden="true">{{ detail.meet.host.first_name|default:detail.meet.host.username|first|upper }}</div><p>Host · {{ detail.meet.host.first_name|default:detail.meet.host.username }}</p></div>
   <div class="detail-people">
     <h3 id="ma">Attendees</h3>
     <div id="att">
-      <div class="at"><div class="av" aria-hidden="true">{{ detail.meet.host.get_username|first|upper }}</div><p>{{ detail.meet.host.get_username }}</p></div>
-      {% for member in detail.attendees %}<div class="at"><div class="av{% if member.user == request.user %} me{% endif %}" aria-hidden="true">{{ member.user.get_username|first|upper }}</div><p>{{ member.user.get_username }}</p></div>{% endfor %}
+      <div class="at"><div class="av" aria-hidden="true">{{ detail.meet.host.first_name|default:detail.meet.host.username|first|upper }}</div><p>{{ detail.meet.host.first_name|default:detail.meet.host.username }}</p></div>
+      {% for member in detail.attendees %}<div class="at"><div class="av{% if member.user == request.user %} me{% endif %}" aria-hidden="true">{{ member.user.first_name|default:member.user.username|first|upper }}</div><p>{{ member.user.first_name|default:member.user.username }}</p></div>{% endfor %}
     </div>
     {% if detail.is_host and detail.active and detail.pending %}
       <section class="requests">
@@ -37,7 +37,7 @@
             {% csrf_token %}
             <input type="hidden" name="page" value="{{ page|default:'home' }}">
             <input type="hidden" name="member" value="{{ member.pk }}">
-            <span>{{ member.user.get_username }}</span>
+            <span>{{ member.user.first_name|default:member.user.username }}</span>
             <button class="mini-pill" name="action" value="approve">Approve</button>
             <button class="mini-pill" name="action" value="decline">Decline</button>
           </form>

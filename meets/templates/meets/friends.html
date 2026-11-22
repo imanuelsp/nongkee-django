@@ -1,0 +1,9 @@
+<section class="friends-panel">
+<form method="post" class="invite">{% csrf_token %}<input type="hidden" name="action" value="invite">
+<label>Email teman <input type="email" required name="email" placeholder="nama@contoh.id"></label>
+<button class="mini-pill">Tambah teman</button></form>
+{% if friend_error %}<p role="alert">{{ friend_error }}</p>{% endif %}
+{% for person in people %}<article><b>{{ person.name }}</b> · {{ person.status }}
+{% if person.status == 'Permintaan masuk' %}<form method="post">{% csrf_token %}<input type="hidden" name="id" value="{{ person.id }}"><button class="mini-pill" name="action" value="accept">Terima</button></form>{% endif %}
+</article>{% empty %}<p>Belum ada teman. Undang teman dengan email akun Nongkee mereka.</p>{% endfor %}
+</section>

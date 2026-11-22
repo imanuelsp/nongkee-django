@@ -58,3 +58,13 @@ class Participation(models.Model):
     class Meta:
         ordering = ['pk']
         constraints = [models.UniqueConstraint(fields=['meet', 'user'], name='unique_meet_participant')]
+
+class FriendRequest(models.Model):
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sent_invites")
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="received_invites")
+    accepted = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["sender", "recipient"], name="unique_friend_invite"),
+        ]

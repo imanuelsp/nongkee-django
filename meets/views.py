@@ -2,9 +2,9 @@ from datetime import timedelta
 
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
+from .forms import EmailSignupForm
 from django.db import IntegrityError, transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -51,16 +51,8 @@ def home(request, page='home'):
     days = [today + timedelta(days=offset) for offset in range(7)]
     meet_list = []
     if page != 'rooms_page':
-        meets = meet_queryset()
-        if page == 'mine':
-            if request.user.is_authenticated:
-                meets = meets.filter(Q(host=request.user) | Q(participants__user=request.user)).distinct()
-            else:
-                meets = meets.none()
-        else:
-            meets = meets.filter(date__gte=today)
-        for meet in meets:
-            if page == 'mine' or active_meet(meet):
+        for meet in meet_queryset().filter(date__gte=today):
+            if active_meet(meet):
                 details = detail_context(meet, request.user)
                 details['avatars'] = [meet.host] + [member.user for member in details['attendees']]
                 details['extra'] = max(len(details['avatars']) - 3, 0)
@@ -139,7 +131,7 @@ def create(request):
                 ])
     except IntegrityError:
         return JsonResponse({'error': 'A meet already uses this classroom at that time. Choose another room.'}, status=409)
-    return JsonResponse({'url': f'{reverse("meets:mine")}?meet={meet.pk}'}, status=201)
+    return JsonResponse({'url': f'{reverse("meets:home")}?meet={meet.pk}'}, status=201)
 
 
 @login_required
@@ -158,6 +150,8 @@ def act(request, pk):
 
         if action == 'cancel':
             meet.delete()
+            if request.headers.get('Accept') == 'application/json':
+                return JsonResponse({'done': True})
             return redirect(destination)
         if action in ('join', 'approve') and not active_meet(meet):
             return HttpResponseBadRequest('This meet has ended.')
@@ -179,6 +173,8 @@ def act(request, pk):
         else:
             return HttpResponseBadRequest('Unknown meet action.')
 
+    if request.headers.get('Accept') == 'application/json':
+        return JsonResponse({'done': True})
     return redirect(f'{destination}?meet={pk}')
 
 
@@ -189,8 +185,9 @@ def signup(request):
     next_url = request.POST.get('next') or request.GET.get('next', '')
     if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
         next_url = ''
-    form = UserCreationForm(request.POST if request.method == 'POST' else None)
+    form = EmailSignupForm(request.POST if request.method == 'POST' else None)
     if request.method == 'POST' and form.is_valid():
         login(request, form.save())
         return redirect(next_url or 'meets:home')
     return render(request, 'meets/auth.html', {'form': form, 'signup': True, 'next': next_url})
+

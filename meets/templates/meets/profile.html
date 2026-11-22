@@ -1,0 +1,9 @@
+{% load static %}
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Profil · nongkee</title><link rel="stylesheet" href="{% static 'meets/nongkee.css' %}"></head>
+<body class="auth-page"><main class="auth-card">
+<a class="auth-brand" href="{% url 'meets:home' %}">nongkee</a><h1>Profil</h1>
+<p>{{ user.email }}</p>{% for message in messages %}<p role="status">{{ message }}</p>{% endfor %}
+<form method="post">{% csrf_token %}{{ form.as_p }}<button class="launch-btn">Simpan profil</button></form>
+<h2>Mahasiswa UI</h2><p>Belum terverifikasi</p>
+<form method="post" action="{% url 'meets:verify' %}">{% csrf_token %}<button class="mini-pill">Verifikasi mahasiswa UI</button></form>
+<a href="{% url 'meets:home' %}">Kembali ke Open Meets</a></main></body></html>

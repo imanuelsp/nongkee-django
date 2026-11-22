@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if page == 'mine' %}My Meets{% elif page == 'rooms_page' %}Kelas Kosong{% else %}Open Meets{% endif %} · nongkee</title>
+  <title>{% if page == 'friends' %}Friends{% elif page == 'rooms_page' %}Kelas Kosong{% else %}Open Meets{% endif %} · nongkee</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'meets/nongkee.css' %}">
   <script src="{% static 'meets/nongkee.js' %}" defer></script>
@@ -22,13 +22,13 @@
     </a>
     <div class="who">
       {% if user.is_authenticated %}
-        <b>{{ user.get_username }}</b>
+        <a href="{% url 'meets:profile' %}">{{ user.first_name|default:"Profil" }} · Profil</a>
         <form method="post" action="{% url 'meets:logout' %}">{% csrf_token %}<button type="submit" class="text-button">Sign out</button></form>
       {% else %}
         <a href="{% url 'meets:login' %}?next={{ request.path|urlencode }}">Sign in</a>
       {% endif %}
     </div>
-    <div class="av me-av" aria-hidden="true">{% if user.is_authenticated %}{{ user.get_username|first|upper }}{% endif %}</div>
+    <div class="av me-av" aria-hidden="true">{% if user.is_authenticated %}{{ user.first_name|default:user.username|first|upper }}{% endif %}</div>
   </header>
 
   <div class="frame" id="fl"></div><div class="frame" id="fm"></div><div class="frame" id="fr"></div>
@@ -41,9 +41,9 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"/><path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"/><path d="M5 18v2M19 18v2"/></svg>
       <span class="tooltip">Open Meets</span>
     </a>
-    <a class="nav-item{% if page == 'mine' %} on{% endif %}" href="{% url 'meets:mine' %}" aria-label="My Meets"{% if page == 'mine' %} aria-current="page"{% endif %}>
+    <a class="nav-item{% if page == 'friends' %} on{% endif %}" href="{% url 'meets:friends' %}" aria-label="Friends"{% if page == 'friends' %} aria-current="page"{% endif %}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span class="tooltip">My Meets</span>
+      <span class="tooltip">Friends</span>
     </a>
   </nav>
 
@@ -53,9 +53,11 @@
       <div class="room-view-controls" id="directoryFilters">{% include 'meets/room_filters.html' %}</div>
       <div id="roomsGrid" aria-live="polite"></div>
     </main>
+  {% elif page == 'friends' %}
+    <main id="meetsView"><h1 class="view-title">Friends</h1>{% include 'meets/friends.html' %}</main>
   {% else %}
     <main id="meetsView">
-      <h1 class="view-title">{% if page == 'mine' %}My Meets{% else %}Open Meets{% endif %}</h1>
+      <h1 class="view-title">{% if page == 'friends' %}Friends{% else %}Open Meets{% endif %}</h1>
       <div id="grid">
         {% if user.is_authenticated %}
           <button type="button" class="card create" id="openCreateCard" aria-label="Start a Meet"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20"/><path d="M23 14v18M14 23h18"/></svg></button>
@@ -65,11 +67,11 @@
         {% for item in meet_list %}
           <a class="card{% if item.is_host or item.member.status == 'joined' %} mine{% endif %}" href="?meet={{ item.meet.pk }}" data-detail-url="{% url 'meets:detail' item.meet.pk %}">
             <div class="avs" aria-hidden="true">
-              {% for attendee in item.avatars|slice:':3' %}<div class="av{% if forloop.first %} big{% endif %}{% if attendee == user %} me{% endif %}">{{ attendee.get_username|first|upper }}</div>{% endfor %}
+              {% for attendee in item.avatars|slice:':3' %}<div class="av{% if forloop.first %} big{% endif %}{% if attendee == user %} me{% endif %}">{{ attendee.first_name|default:attendee.username|first|upper }}</div>{% endfor %}
               {% if item.extra %}<span class="cnt">+{{ item.extra }}</span>{% endif %}
             </div>
             <div class="t">{{ item.meet.title }}</div>
-            <div class="o">opened by: {{ item.meet.host.get_username }}</div>
+            <div class="o">opened by: {{ item.meet.host.first_name|default:item.meet.host.username }}</div>
             <div class="tags"><span class="tag">{{ item.meet.get_topic_display }}</span><span class="tag room-tag">📍 {{ item.meet.room }}</span></div>
           </a>
         {% empty %}
@@ -86,7 +88,7 @@
     <div id="detailContent">{% if detail %}{% include 'meets/detail.html' %}{% endif %}</div>
   </section>
 
-  {% if user.is_authenticated %}
+  {% if user.is_authenticated and page != 'friends' %}
     <form id="createModal" action="{% url 'meets:create' %}" method="post" role="dialog" aria-modal="true" aria-labelledby="createTitle" hidden>
       {% csrf_token %}
       <div class="modal-header">
@@ -111,7 +113,7 @@
           </div>
           <div class="field-group">
             <span class="field-label">Host</span>
-            <div class="host-preview"><div class="av" aria-hidden="true">{{ user.get_username|first|upper }}</div><strong>{{ user.get_username }}</strong></div>
+            <div class="host-preview"><div class="av" aria-hidden="true">{{ user.first_name|default:user.username|first|upper }}</div><strong>{{ user.first_name|default:user.username }}</strong></div>
           </div>
         </div>
         <div class="right-pane">
