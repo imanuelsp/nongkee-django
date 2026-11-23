@@ -2,12 +2,16 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 from django.views.generic import RedirectView
 
-from . import views, social, desktop_api
+from . import views, social, desktop_api, google_auth
 from .forms import EmailLoginForm
 
 app_name = 'meets'
 
 urlpatterns = [
+    path('auth/google/', google_auth.exchange, name='google'),
+    path('auth/desktop/', google_auth.desktop_login),
+    path('auth/desktop/redeem/', google_auth.redeem),
+    path('avatars/<uuid:key>/', social.avatar, name='avatar'),
     path('api/state/', desktop_api.state),
     path('api/account/<str:action>/', desktop_api.account),
     path('friends/', social.friends, name='friends'),

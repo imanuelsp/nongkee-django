@@ -1,0 +1,6 @@
+{% load static %}{% if firebase_web %}
+{{ firebase_web|json_script:"firebase-config" }}
+<button type="button" class="google-button" id="google-auth" data-link="{{ link|default:'' }}" data-endpoint="{% url 'meets:google' %}">{% if link %}Hubungkan Google{% else %}Lanjutkan dengan Google{% endif %}</button>
+<p id="google-status" role="status"></p>
+<script type="module" src="{% static 'meets/google.js' %}"></script>
+{% endif %}

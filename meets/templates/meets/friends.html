@@ -1,9 +1,13 @@
 <section class="friends-panel">
 <form method="post" class="invite">{% csrf_token %}<input type="hidden" name="action" value="invite">
-<label>Email teman <input type="email" required name="email" placeholder="nama@contoh.id"></label>
-<button class="mini-pill">Tambah teman</button></form>
-{% if friend_error %}<p role="alert">{{ friend_error }}</p>{% endif %}
-{% for person in people %}<article><b>{{ person.name }}</b> · {{ person.status }}
-{% if person.status == 'Permintaan masuk' %}<form method="post">{% csrf_token %}<input type="hidden" name="id" value="{{ person.id }}"><button class="mini-pill" name="action" value="accept">Terima</button></form>{% endif %}
-</article>{% empty %}<p>Belum ada teman. Undang teman dengan email akun Nongkee mereka.</p>{% endfor %}
+<label for="friend-handle">Cari teman lewat username</label><div><input id="friend-handle" required name="handle" maxlength="31" placeholder="@username" autocapitalize="none" autocomplete="off">
+<button class="primary">Kirim undangan</button></div></form>
+{% if friend_error %}<p class="form-error" role="alert">{{ friend_error }}</p>{% endif %}
+{% for message in messages %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+{% for person in people %}<article class="friend-card"><div class="friend-avatar">{% if person.avatar %}<img src="{{ person.avatar }}" alt="">{% else %}{{ person.name|first|upper }}{% endif %}</div>
+<div><h2>{{ person.name }}</h2><small>@{{ person.handle }} · {{ person.status }}</small>
+{% if person.shared_classes %}<p class="match"><b>This person is in your class</b><br>{{ person.shared_classes|join:", " }}</p>{% endif %}
+{% if person.shared_interests %}<p>Minat bersama · {{ person.shared_interests|join:", " }}</p>{% endif %}</div>
+{% if person.status != 'Friends' %}<form method="post">{% csrf_token %}<input type="hidden" name="id" value="{{ person.id }}">{% if person.status == 'Permintaan masuk' %}<button class="primary" name="action" value="accept">Terima</button>{% endif %}<button class="secondary" name="action" value="dismiss">{% if person.status == 'Terkirim' %}Tarik undangan{% else %}Tolak{% endif %}</button></form>{% endif %}
+</article>{% empty %}<div class="empty-state"><h2>Belum ada teman</h2><p>Bagikan username <strong>@{{ user.student.handle }}</strong> atau undang teman dengan username mereka.</p></div>{% endfor %}
 </section>

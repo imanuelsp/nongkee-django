@@ -10,22 +10,33 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-s%_ocjtbsu&3tuvruue@37952_jly3da8-hfg&u_w_y!e@2y50'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+DEBUG = os.getenv("DJANGO_ENV", "development") == "development"
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "local-development-only" if DEBUG else "")
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "").split(",") if h.strip()]
+if not DEBUG and (len(SECRET_KEY) < 50 or not ALLOWED_HOSTS):
+    raise ImproperlyConfigured("Production requires DJANGO_SECRET_KEY (50+ chars) and DJANGO_ALLOWED_HOSTS.")
+SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_PRELOAD = not DEBUG
+if os.getenv("TRUST_HTTPS_PROXY") == "1":
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+STATIC_ROOT = BASE_DIR / "staticfiles"
+FIREBASE_WEB = {key: os.getenv(name, "") for key, name in (
+    ("apiKey", "FIREBASE_API_KEY"), ("projectId", "FIREBASE_PROJECT_ID"),
+    ("authDomain", "FIREBASE_AUTH_DOMAIN"), ("appId", "FIREBASE_APP_ID"))}
+if not any(FIREBASE_WEB.values()):
+    FIREBASE_WEB = {}
+elif not all(FIREBASE_WEB.values()):
+    raise ImproperlyConfigured("Lengkapi keempat variabel FIREBASE untuk Google Sign-In.")
+DATA_UPLOAD_MAX_MEMORY_SIZE = 4 * 1024 * 1024
 
 
 # Application definition
@@ -42,6 +53,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -62,6 +74,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'meets.google_auth.config_context',
             ],
         },
     },
@@ -76,7 +89,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.getenv('NONGKEE_DB', BASE_DIR / 'db.sqlite3'),
         'OPTIONS': {'transaction_mode': 'IMMEDIATE'},
     }
 }
@@ -128,6 +141,6 @@ STATIC_URL = 'static/'
 
 MAILERS = {
     'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        'BACKEND': ('django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend'),
     },
 }

@@ -1,5 +1,9 @@
+from uuid import uuid4
+
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class Meet(models.Model):
@@ -68,3 +72,31 @@ class FriendRequest(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["sender", "recipient"], name="unique_friend_invite"),
         ]
+
+
+def new_handle():
+    return "nongkee_" + uuid4().hex[:12]
+
+
+class StudentProfile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="student")
+    handle = models.CharField(max_length=30, unique=True, default=new_handle)
+    classes = models.JSONField(default=list)
+    interests = models.JSONField(default=list)
+    avatar = models.BinaryField(default=bytes)
+    avatar_key = models.UUIDField(null=True, unique=True)
+    firebase_uid = models.CharField(max_length=128, null=True, unique=True)
+
+
+class DesktopGrant(models.Model):
+    code_hash = models.CharField(max_length=64, primary_key=True)
+    challenge = models.CharField(max_length=64)
+    expires = models.DateTimeField()
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_student_profile(sender, instance, created, raw=False, **kwargs):
+    if created and not raw:
+        StudentProfile.objects.get_or_create(user=instance)

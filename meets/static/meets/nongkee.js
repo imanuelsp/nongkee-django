@@ -197,3 +197,15 @@ detail.addEventListener('submit', event => {
   if (prompt && !window.confirm(prompt)) event.preventDefault();
 });
 if (!detail.hidden) setModal('detail');
+
+const query = document.querySelector('#meet-search');
+function filterMeets() {
+  const cards = [...document.querySelectorAll('[data-detail-url]')];
+  for (const card of cards) {
+    card.hidden = !card.textContent.toLowerCase().includes(query.value.trim().toLowerCase()) ||
+      (document.querySelector('#my-meets')?.checked && !card.classList.contains('mine'));
+  }
+  document.querySelector('#no-results').hidden = !cards.length || cards.some(card => !card.hidden);
+}
+query?.addEventListener('input', filterMeets);
+document.querySelector('#my-meets')?.addEventListener('change', filterMeets);

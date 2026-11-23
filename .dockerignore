@@ -1,0 +1,11 @@
+**
+!Dockerfile
+!requirements.txt
+!manage.py
+!config/
+!config/*.py
+!meets/
+!meets/**
+**/__pycache__/
+**/*.pyc
+

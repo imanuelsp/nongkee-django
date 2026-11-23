@@ -1,9 +1,20 @@
-{% load static %}
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Profil · nongkee</title><link rel="stylesheet" href="{% static 'meets/nongkee.css' %}"></head>
-<body class="auth-page"><main class="auth-card">
-<a class="auth-brand" href="{% url 'meets:home' %}">nongkee</a><h1>Profil</h1>
-<p>{{ user.email }}</p>{% for message in messages %}<p role="status">{{ message }}</p>{% endfor %}
-<form method="post">{% csrf_token %}{{ form.as_p }}<button class="launch-btn">Simpan profil</button></form>
-<h2>Mahasiswa UI</h2><p>Belum terverifikasi</p>
-<form method="post" action="{% url 'meets:verify' %}">{% csrf_token %}<button class="mini-pill">Verifikasi mahasiswa UI</button></form>
-<a href="{% url 'meets:home' %}">Kembali ke Open Meets</a></main></body></html>
+{% load static %}<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Profil · nongkee</title><link rel="stylesheet" href="{% static 'meets/nongkee.css' %}"><script src="{% static 'meets/profile.js' %}" defer></script></head>
+<body class="profile-page"><main class="profile-shell">
+<div class="profile-nav"><a class="auth-brand" href="{% url 'meets:home' %}">nongkee</a><a href="{% url 'meets:friends' %}">Friends ↗</a></div>
+<div class="identity-cover"><div class="portrait">{% if person.avatar %}<img src="{{ person.avatar }}" alt="Foto profil">{% else %}{{ person.name|first|upper }}{% endif %}</div><div><h1>{{ person.name }}</h1><span>@{{ person.handle }}</span></div></div>
+{% for message in messages %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+{% if person.classes or person.interests %}<div class="profile-summary">{% if person.classes %}<div><b>Kelas diikuti</b>{% for item in person.classes %}<span>{{ item }}</span>{% endfor %}</div>{% endif %}{% if person.interests %}<div><b>Minat</b>{% for item in person.interests %}<span>{{ item }}</span>{% endfor %}</div>{% endif %}</div>{% endif %}
+<div class="profile-layout"><form method="post" enctype="multipart/form-data" class="edit-profile">{% csrf_token %}
+<h2>Profil saya</h2>{{ form.non_field_errors }}
+{% for field in form %}{% if field.name != 'classes' %}
+<div class="profile-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}</div>
+{% else %}
+<fieldset class="class-picker"><legend>Kelas saya</legend><input type="hidden" name="classes_present" value="1">
+<input type="search" id="class-search" aria-label="Cari mata kuliah atau rombel" placeholder="Cari mata kuliah atau rombel…">
+<div class="class-options">{% for value,label in field.field.choices %}<label><input type="checkbox" name="classes" value="{{ value }}" {% if value in field.value %}checked{% endif %}>{{ label }}</label>{% endfor %}</div>{{ field.errors }}<small id="selected-count" aria-live="polite"></small></fieldset>
+{% endif %}{% endfor %}
+<button class="primary">Simpan profil</button></form>
+<aside><section class="schedule-tile"><h2>Kelas berikutnya</h2>{% if person.next_class %}<strong>{{ person.next_class.label }}</strong><p>{{ person.next_class.date }} · {{ person.next_class.time }} WIB</p><p>{{ person.next_class.room }}</p>{% else %}<p>Pilih rombel di Kelas saya untuk melihat jadwal berikutnya.</p>{% endif %}</section>
+<section><h2>Akun</h2><p>{{ user.email }}</p>{% if user.student.firebase_uid %}<p>Google terhubung</p>{% else %}{% include 'meets/google_button.html' with link='1' %}{% endif %}<hr><h3>Mahasiswa UI</h3><p>Belum terverifikasi</p>
+<form method="post" action="{% url 'meets:verify' %}">{% csrf_token %}<button class="secondary">Verifikasi mahasiswa UI</button></form></section>
+<a href="{% url 'meets:home' %}">← Kembali ke Open Meets</a></aside></div></main></body></html>

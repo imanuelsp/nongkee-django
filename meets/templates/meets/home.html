@@ -28,7 +28,7 @@
         <a href="{% url 'meets:login' %}?next={{ request.path|urlencode }}">Sign in</a>
       {% endif %}
     </div>
-    <div class="av me-av" aria-hidden="true">{% if user.is_authenticated %}{{ user.first_name|default:user.username|first|upper }}{% endif %}</div>
+    <div class="av me-av" aria-hidden="true">{% if user.is_authenticated %}{% if user.student.avatar_key %}<img src="{% url 'meets:avatar' user.student.avatar_key %}" alt="">{% else %}{{ user.first_name|default:user.username|first|upper }}{% endif %}{% endif %}</div>
   </header>
 
   <div class="frame" id="fl"></div><div class="frame" id="fm"></div><div class="frame" id="fr"></div>
@@ -51,6 +51,7 @@
     <main id="roomsView">
       <h1 class="view-title">Katalog Kelas Kosong</h1>
       <div class="room-view-controls" id="directoryFilters">{% include 'meets/room_filters.html' %}</div>
+      <label class="availability"><input type="checkbox" id="only-free"> Hanya ruang kosong</label>
       <div id="roomsGrid" aria-live="polite"></div>
     </main>
   {% elif page == 'friends' %}
@@ -58,16 +59,18 @@
   {% else %}
     <main id="meetsView">
       <h1 class="view-title">{% if page == 'friends' %}Friends{% else %}Open Meets{% endif %}</h1>
+      <div class="discover-tools"><input type="search" id="meet-search" placeholder="Cari judul, topik, atau ruang…" aria-label="Cari meet">{% if user.is_authenticated %}<label><input type="checkbox" id="my-meets"> Meet saya</label>{% endif %}</div>
+      <p id="no-results" class="notice" hidden>Tidak ada meet yang cocok.</p>
       <div id="grid">
         {% if user.is_authenticated %}
-          <button type="button" class="card create" id="openCreateCard" aria-label="Start a Meet"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20"/><path d="M23 14v18M14 23h18"/></svg></button>
+          <button type="button" class="card create" id="openCreateCard" aria-label="Start a Meet"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20"/><path d="M23 14v18M14 23h18"/></svg><span>Start a Meet</span></button>
         {% else %}
-          <a class="card create" href="{% url 'meets:login' %}?next={{ request.path|urlencode }}" aria-label="Sign in to start a meet"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20"/><path d="M23 14v18M14 23h18"/></svg></a>
+          <a class="card create" href="{% url 'meets:login' %}?next={{ request.path|urlencode }}" aria-label="Sign in to start a meet"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20"/><path d="M23 14v18M14 23h18"/></svg><span>Start a Meet</span></a>
         {% endif %}
         {% for item in meet_list %}
           <a class="card{% if item.is_host or item.member.status == 'joined' %} mine{% endif %}" href="?meet={{ item.meet.pk }}" data-detail-url="{% url 'meets:detail' item.meet.pk %}">
             <div class="avs" aria-hidden="true">
-              {% for attendee in item.avatars|slice:':3' %}<div class="av{% if forloop.first %} big{% endif %}{% if attendee == user %} me{% endif %}">{{ attendee.first_name|default:attendee.username|first|upper }}</div>{% endfor %}
+              {% for attendee in item.avatars|slice:':3' %}<div class="av{% if forloop.first %} big{% endif %}{% if attendee == user %} me{% endif %}">{% if attendee.student.avatar_key %}<img src="{% url 'meets:avatar' attendee.student.avatar_key %}" alt="">{% else %}{{ attendee.first_name|default:attendee.username|first|upper }}{% endif %}</div>{% endfor %}
               {% if item.extra %}<span class="cnt">+{{ item.extra }}</span>{% endif %}
             </div>
             <div class="t">{{ item.meet.title }}</div>
@@ -75,7 +78,7 @@
             <div class="tags"><span class="tag">{{ item.meet.get_topic_display }}</span><span class="tag room-tag">📍 {{ item.meet.room }}</span></div>
           </a>
         {% empty %}
-          <p class="empty-meets">{% if page == 'home' %}No open meets yet.{% elif user.is_authenticated %}You haven’t hosted, joined, or requested a meet yet.{% else %}Sign in to see your meets.{% endif %}</p>
+          <p class="empty-meets">{% if page == 'home' %}Belum ada meet aktif. Mulai pertemuan pertama lewat kartu tambah.{% elif user.is_authenticated %}You haven’t hosted, joined, or requested a meet yet.{% else %}Sign in to see your meets.{% endif %}</p>
         {% endfor %}
       </div>
     </main>

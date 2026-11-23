@@ -1,0 +1,9 @@
+services:
+  web:
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase_admin
+    secrets: [firebase_admin]
+secrets:
+  firebase_admin:
+    file: ${FIREBASE_CREDENTIALS_FILE:?Specify an external service-account JSON path}
+

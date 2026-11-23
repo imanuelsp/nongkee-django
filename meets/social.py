@@ -1,14 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
-from django.http import JsonResponse
-from django.shortcuts import redirect, render
-from django.views.decorators.http import require_http_methods, require_POST
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .forms import ProfileForm
-from .models import FriendRequest
+from .models import FriendRequest, StudentProfile
+from .profiles import StudentForm, catalogue, photo_url, profile_data, profile_for
 
 SSO_MESSAGE = "SSO UI belum terhubung. Status mahasiswa Anda masih Belum terverifikasi."
 
@@ -22,28 +21,54 @@ def name(user):
 
 
 def connections(user):
-    rows = FriendRequest.objects.filter(Q(sender=user) | Q(recipient=user)).select_related("sender", "recipient")
-    return [
-        {"id": row.pk, "name": name(row.recipient if row.sender_id == user.pk else row.sender),
-         "status": "Friends" if row.accepted else "Terkirim" if row.sender_id == user.pk else "Permintaan masuk"}
-        for row in rows.order_by("pk")
-    ]
+    own = profile_for(user)
+    rows = FriendRequest.objects.filter(Q(sender=user) | Q(recipient=user)).select_related(
+        "sender__student", "recipient__student").defer("sender__student__avatar", "recipient__student__avatar")
+    people = []
+    for row in rows.order_by("-pk"):
+        other = row.recipient if row.sender_id == user.pk else row.sender
+        peer = other.student
+        people.append({"id": row.pk, "name": name(other), "handle": peer.handle, "avatar": photo_url(peer),
+                       "shared_classes": sorted(set(peer.classes).intersection(own.classes)),
+                       "shared_interests": [i for i in peer.interests if i.casefold() in {s.casefold() for s in own.interests}],
+                       "status": "Friends" if row.accepted else "Terkirim" if row.sender_id == user.pk else "Permintaan masuk"})
+    return people
+
+
+@require_GET
+def avatar(request, key):
+    profile = get_object_or_404(StudentProfile.objects.only("avatar"), avatar_key=key)
+    return HttpResponse(bytes(profile.avatar), content_type="image/png", headers={"Cache-Control": "private, max-age=3600"})
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
 def profile(request):
-    form = ProfileForm(request.POST if request.method == "POST" else None, instance=request.user)
-    if request.method == "POST":
-        if form.is_valid():
-            form.save()
+    person = profile_for(request.user)
+    if request.method == "GET" and wants_json(request):
+        return JsonResponse({"user": profile_data(request.user), "catalogue": list(catalogue())})
+    data = request.POST.copy() if request.method == "POST" else None
+    if data is not None:
+        # Earlier clients only send the display name.
+        data.setdefault("handle", person.handle)
+        data.setdefault("interests", ", ".join(person.interests))
+        if "classes" not in data and "classes_present" not in data:
+            data.setlist("classes", person.classes)
+    form = StudentForm(data, request.FILES if data is not None else None, profile=person)
+    if data is not None and form.is_valid():
+        try:
+            with transaction.atomic():
+                form.save()
+        except IntegrityError:
+            form.add_error("handle", "Username ini sudah digunakan.")
+        else:
             if wants_json(request):
-                return JsonResponse({"name": name(request.user)})
+                return JsonResponse(profile_data(request.user))
             messages.success(request, "Profil tersimpan.")
             return redirect("meets:profile")
-        if wants_json(request):
-            return JsonResponse({"error": form.errors.as_text()}, status=400)
-    return render(request, "meets/profile.html", {"form": form})
+    if data is not None and wants_json(request):
+        return JsonResponse({"error": form.errors.as_text()}, status=400)
+    return render(request, "meets/profile.html", {"form": form, "person": profile_data(request.user)})
 
 
 @login_required
@@ -60,23 +85,30 @@ def verify(request):
 def friends(request):
     error = ""
     if request.method == "POST":
+        action = request.POST.get("action")
         with transaction.atomic():
-            if request.POST.get("action") == "invite":
-                matches = list(User.objects.filter(email__iexact=request.POST.get("email", "").strip(), is_active=True)[:2])
-                if len(matches) != 1 or matches[0] == request.user:
-                    error = "Pilih email akun Nongkee lain yang terdaftar."
-                elif FriendRequest.objects.filter(sender=matches[0], recipient=request.user).exists():
-                    error = "Hubungan sudah ada. Periksa daftar Friends."
+            if action == "invite":
+                handle = request.POST.get("handle", "").strip().lstrip("@").lower()
+                peer = StudentProfile.objects.filter(handle=handle, user__is_active=True).only("user_id").first()
+                if not peer or peer.user_id == request.user.pk:
+                    error = "Masukkan username akun Nongkee lain yang terdaftar."
+                elif FriendRequest.objects.filter(sender_id=peer.user_id, recipient=request.user).exists():
+                    error = "Periksa daftar Friends untuk hubungan yang sudah ada."
                 else:
-                    FriendRequest.objects.get_or_create(sender=request.user, recipient=matches[0])
-            elif request.POST.get("action") == "accept":
+                    FriendRequest.objects.get_or_create(sender=request.user, recipient_id=peer.user_id)
+            elif action in ("accept", "dismiss"):
                 key = request.POST.get("id", "")
-                if not (key.isascii() and key.isdecimal() and len(key) <= 18 and
-                        FriendRequest.objects.filter(pk=int(key), recipient=request.user).update(accepted=True)):
+                rows = FriendRequest.objects.filter(pk=int(key), accepted=False) if key.isascii() and key.isdecimal() and len(key) <= 18 else FriendRequest.objects.none()
+                if action == "accept":
+                    changed = rows.filter(recipient=request.user).update(accepted=True)
+                else:
+                    changed, _ = rows.filter(Q(sender=request.user) | Q(recipient=request.user)).delete()
+                if not changed:
                     error = "Permintaan tidak ditemukan."
             else:
                 error = "Tindakan tidak dikenal."
         if not error and not wants_json(request):
+            messages.success(request, {"invite": "Undangan terkirim.", "accept": "Teman ditambahkan.", "dismiss": "Undangan ditutup."}[action])
             return redirect("meets:friends")
     people = connections(request.user)
     if wants_json(request):

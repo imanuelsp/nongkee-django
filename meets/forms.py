@@ -70,11 +70,3 @@ class EmailSignupForm(UserCreationForm):
     def save(self, commit=True):
         self.instance.email = self.cleaned_data["username"]
         return super().save(commit)
-
-
-class ProfileForm(forms.ModelForm):
-    first_name = forms.CharField(label="Nama tampilan", max_length=150)
-
-    class Meta:
-        model = User
-        fields = ("first_name",)

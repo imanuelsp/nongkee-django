@@ -19,8 +19,8 @@ from .timetable import BUILDINGS, DAYS, initial_slot, local_end, local_start, ro
 
 
 def meet_queryset():
-    return Meet.objects.select_related('host').prefetch_related(
-        Prefetch('participants', queryset=Participation.objects.select_related('user')),
+    return Meet.objects.select_related('host__student').defer('host__student__avatar').prefetch_related(
+        Prefetch('participants', queryset=Participation.objects.select_related('user__student').defer('user__student__avatar')),
     )
 
 

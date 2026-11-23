@@ -6,6 +6,8 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .forms import EmailLoginForm, EmailSignupForm, SlotForm
 from .models import Meet
+from django.conf import settings
+from .profiles import profile_data
 from .social import name
 from .timetable import BUILDINGS, initial_slot, room_options
 from .views import active_meet, detail_context, meet_queryset
@@ -35,7 +37,7 @@ def state(request):
             "requests": [{"id": p.pk, "name": name(p.user)} for p in info["pending"]] if info["is_host"] else [],
         })
     return JsonResponse({
-        "csrf": get_token(request), "user": {"name": name(user), "email": user.email} if user.is_authenticated else None,
+        "csrf": get_token(request), "user": profile_data(user) if user.is_authenticated else None, "google_enabled": bool(settings.FIREBASE_WEB),
         "meets": meets, "date": date, "window": window, "windows": Meet.Window.values,
         "topics": Meet.Topic.values, "buildings": BUILDINGS,
     })

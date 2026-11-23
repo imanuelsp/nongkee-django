@@ -11,6 +11,7 @@
   <main class="auth-card">
     <a class="auth-brand" href="{% url 'meets:home' %}">nongkee</a>
     <h1>{% if signup %}Create account{% else %}Sign in{% endif %}</h1>
+    {% include 'meets/google_button.html' %}
     <form method="post">
       {% csrf_token %}
       {{ form.as_p }}

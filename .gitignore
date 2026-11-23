@@ -226,3 +226,6 @@ db.sqlite3
 .env
 .vscode/
 /nongkee-desktop/
+
+/staticfiles/
+*firebase-adminsdk*.json
